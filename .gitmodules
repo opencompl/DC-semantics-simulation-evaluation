@@ -1,0 +1,10 @@
+[submodule "circt"]
+	path = circt
+	url = https://github.com/llvm/circt.git
+    shallow = true
+	branch = main
+
+[submodule "lean-MLIR"]
+	path = circt
+	url = https://github.com/opencompl/lean-MLIR.git
+	branch = main
