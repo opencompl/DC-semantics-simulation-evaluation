@@ -5,6 +5,6 @@
 	branch = main
 
 [submodule "lean-MLIR"]
-	path = circt
+	path = lean-MLIR
 	url = https://github.com/opencompl/lean-MLIR.git
 	branch = main
