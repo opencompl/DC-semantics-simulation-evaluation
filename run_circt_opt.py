@@ -1,0 +1,119 @@
+import os 
+import subprocess 
+import argparse
+import shutil 
+TIMEOUT_SEC = 1800
+
+ROOT_DIR = (
+    subprocess.check_output(["git", "rev-parse", "--show-toplevel"])
+    .decode("utf-8")
+    .strip()
+)
+
+CIRCT_DIR_PATH = f"{ROOT_DIR}/circt/build/bin/"
+
+class LoweringPass:
+    def __init__(self, name, command, output_name):
+        self.name = name
+        self.command = command
+        self.output_name = output_name
+
+LOWERING_PASSES = [
+    LoweringPass("handshake_to_dc", "--lower-handshake-to-dc", "dc.mlir"),
+    LoweringPass("materialize_forks_sinks", "--dc-materialize-forks-sinks", "dc-materialized.mlir"),
+    LoweringPass("canonicalize", "--canonicalize", "dc-canonicalized.mlir"),
+    LoweringPass("dc_to_hw", "--lower-dc-to-hw", "hw.mlir"),
+    LoweringPass("lower_esi_ports", "--lower-esi-ports", "hw-esi-lowered.mlir"),
+    LoweringPass("lower_esi_to_hw", "--lower-esi-to-hw", "hw-esi-hw.mlir"),
+    LoweringPass("hw_to_sv", "--lower-hw-to-sv", "sv.mlir"),
+    LoweringPass("prettify_verilog", "--prettify-verilog", "sv-prettified.mlir"),
+    LoweringPass("seq_to_sv", "--lower-seq-to-sv", "sv-seq-lowered.mlir"),
+    LoweringPass("export_verilog", "-export-verilog", "verilog.v"),
+]
+
+def run_command(cmd, log_file, timeout=TIMEOUT_SEC):
+    try:
+        print(cmd)
+        ret_code = subprocess.Popen(
+            cmd, stdout=log_file, stderr=log_file, shell=True
+        ).wait(timeout=timeout)
+        return ret_code
+    except subprocess.TimeoutExpired:
+        log_file.truncate(0)
+        log_file.write(f"timeout of {timeout} seconds reached\n")
+        print(f"{log_file} - timeout of {timeout} seconds reached")
+
+
+def clear_verilog_module(module_folder_path): 
+    clear_file = open(os.path.join(module_folder_path, "module.v"), "w")
+    verilog_file = open(os.path.join(module_folder_path, "verilog.v"), "r")
+    lines = verilog_file.readlines()
+    for line in lines: 
+        if 'module {' in line : 
+            clear_file.close()
+            return 
+        else :
+            clear_file.write(line)
+
+
+def lower(folder_path, entry): 
+
+    if entry == "handshake": 
+        current_file = "handshake.mlir"
+        start = 0
+    elif entry == "dc": 
+        start = 1
+        current_file = "dc.mlir"
+    else:
+        raise ValueError("Unknown entry point " + entry)
+
+
+    for i in range(start, len(LOWERING_PASSES)):
+        lowering_pass = LOWERING_PASSES[i]
+        input_path = os.path.join(folder_path, current_file)
+        cmd = f"{CIRCT_DIR_PATH}circt-opt {input_path} {lowering_pass.command} > {folder_path}/{lowering_pass.output_name}" 
+        log_file = open(os.path.join(folder_path, f"log_files/{lowering_pass.name}.log"), "w")
+        ret_code = run_command(cmd, log_file)
+        if ret_code != 0:
+            print(f"Lowering failed at pass {lowering_pass.name}, see {log_file} for details")
+            return
+        current_file = lowering_pass.output_name
+
+    clear_verilog_module(folder_path)
+    
+
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "-i",
+        "--input",
+        type=str,
+        required = True,
+        help="Name of the folder containing the file to lower and simulate.",
+    )
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "--dc",
+        action="store_const",
+        dest="entry",
+        const="dc",
+        help="Set entry point for the lowering to `dc`.",
+    )
+    group.add_argument(
+        "--handshake",
+        action="store_const",
+        dest="entry",
+        const="handshake",
+        help="Set entry point for the lowering to `handshake`.",
+    )
+
+    args = parser.parse_args()
+
+    lower(args.input, args.entry)
+
+
+if __name__ == "__main__":
+    main()
