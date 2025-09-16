@@ -1,0 +1,20 @@
+suppress/dc-canonicalized.mlir:7:31: error: 'dc.branch' op DCToHW: value %4:2 = "dc.branch"(%3) : (!dc.value<i1>) -> (!dc.token, !dc.token) is unused.
+    %trueToken, %falseToken = dc.branch %1
+                              ^
+suppress/dc-canonicalized.mlir:7:31: note: see current operation: %4:2 = "dc.branch"(%3) : (!dc.value<i1>) -> (!dc.token, !dc.token)
+suppress/dc-canonicalized.mlir:1:1: error: 'builtin.module' op DCToHW: failed to verify that all values are used exactly once. Remember to run the fork/sink materialization pass before HW lowering.
+module {
+^
+suppress/dc-canonicalized.mlir:1:1: note: see current operation: 
+"builtin.module"() ({
+  "hw.module"() <{module_type = !hw.modty<input arg0 : !dc.value<i32>, input arg1 : !dc.value<i1>, input clk : !seq.clock, input rst : i1, output out0 : !dc.value<i32>>, parameters = [], per_port_attrs = [{}, {}, {dc.clock}, {dc.reset}, {}], result_locs = [loc("suppress/dc-canonicalized.mlir":2:143)], sym_name = "test_suppress"}> ({
+  ^bb0(%arg0: !dc.value<i32>, %arg1: !dc.value<i1>, %arg2: !seq.clock, %arg3: i1):
+    %0:2 = "dc.unpack"(%arg1) : (!dc.value<i1>) -> (!dc.token, i1)
+    %1:2 = "dc.unpack"(%arg0) : (!dc.value<i32>) -> (!dc.token, i32)
+    %2 = "dc.join"(%0#0, %1#0) : (!dc.token, !dc.token) -> !dc.token
+    %3 = "dc.pack"(%2, %0#1) : (!dc.token, i1) -> !dc.value<i1>
+    %4:2 = "dc.branch"(%3) : (!dc.value<i1>) -> (!dc.token, !dc.token)
+    %5 = "dc.pack"(%4#1, %1#1) : (!dc.token, i32) -> !dc.value<i32>
+    "hw.output"(%5) : (!dc.value<i32>) -> ()
+  }) : () -> ()
+}) : () -> ()

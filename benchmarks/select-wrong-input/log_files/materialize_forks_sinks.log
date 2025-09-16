@@ -1,0 +1,6 @@
+benchmarks/select-wrong-input/dc.mlir:8:29: error: use of value '%packtrue' expects different type than prior uses: '!dc.token' vs '!dc.value<i32>'
+    %out= dc.select %input, %packtrue, %packfalse : !dc.token
+                            ^
+benchmarks/select-wrong-input/dc.mlir:6:5: note: prior use here
+    %packtrue= dc.pack %true, %c20 : i32
+    ^
