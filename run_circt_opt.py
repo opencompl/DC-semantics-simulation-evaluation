@@ -10,7 +10,7 @@ ROOT_DIR = (
     .strip()
 )
 
-CIRCT_DIR_PATH = f"{ROOT_DIR}/circt/build/bin/"
+CIRCT_DIR_PATH = f"~/circt/build/bin/"
 
 class LoweringPass:
     def __init__(self, name, command, output_name):
